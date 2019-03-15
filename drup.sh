@@ -178,16 +178,50 @@ fi
 cd /
 so
 
+OPCION='X'
+
 while getopts p:d:s:aicvm opcion
   do
     case "${opcion}" in
       p) PROYECTO=${OPTARG};;
       d) DOMAIN=${OPTARG}; DIR=`echo $DOMAIN | cut -d. -f1`;;
       s) SITIO=${OPTARG}; $RESPALDO=`echo $SITE | rev | cut -d/ -f1 | rev`;;
-      a) actualiza;;
-      i) install_dep;existencia;;
-      c) creacion_proyecto;;
-      v) vh;;
-      m) virtual_host;;
+      a) OPCION='A';;
+      i) OPCION='I';;
+      c) OPCION='C';;
+      v) OPCION='V';;
+      m) OPCION='V';;
     esac
 done
+
+
+if [-z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ]  
+	then
+		echo "Faltan argumentos!"
+		exit 
+	
+fi 
+
+if [ ! -d "$SITIO" ]
+	then 
+		echo "El directorio no existe"
+		exit 
+fi
+
+
+if [ OPCION == 'A']
+	then 
+	actualiza
+elif [ OPCION == 'I']
+	then
+		install_dep;existencia
+elif [ OPCION == 'C']
+	then
+		creacion_proyecto
+elif [ OPCION == 'V']
+	then
+		vh
+elif [ OPCION == 'M']
+	then
+		virtual_host
+fi 
