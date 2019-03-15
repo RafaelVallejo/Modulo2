@@ -96,7 +96,7 @@ virtual_host(){
       CustomLog /var/www/$DOMAIN/requests.log combined
   #      SSLEngine On
     </VirtualHost>" |  tee $SISTEMA
-    ln -s /ejemplo/web /var/www/$DOMAIN
+     ln -s /$PROYECTO/web /var/www/$DOMAIN
 
     if [ $FLAG = 'D9' ] || [ $FLAG = 'D8' ]
     then
@@ -152,7 +152,9 @@ actualiza(){
   case $resp in
     y|Y)drush vset --exact maintenance_mode 0
         drush cache-clear all;;
-    n|N|*)drush archive-restore $SITIO.tar.gz $RESPALDO;;
+    n|N|*)unlink /var/www/$RESPALDO
+          drush archive-restore $SITIO.tar.gz $RESPALDO --destination=/$PROYECTO/web
+          ln -s /$PROYECTO/web /var/www/$DOMAIN;;
   esac
 }
 so(){
@@ -202,7 +204,7 @@ if [-z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ]
 	
 fi 
 
-if [ ! -d "$SITIO" ]
+if [ ! -e "$SITIO" ]
 	then 
 		echo "El directorio no existe"
 		exit 
