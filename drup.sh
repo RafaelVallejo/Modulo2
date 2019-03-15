@@ -70,6 +70,7 @@ creacion_proyecto(){
   cd $PROYECTO
   composer install
   cd ..
+  composer global require drush/drush
 }
 
 # Se configura y hablita VirtualHost  args: web.prueba web
@@ -143,16 +144,15 @@ vh(){
 }
 
 actualiza(){
-  cd /$PROYECTO/vendor/bin
-  ./drush archive-dump --root=/var/www/$DOMAIN --destination=/var/www/$DOMAIN.tar.gz
-  ./drush vset --exact maintenance_mode 1
-  ./drush cache-clear all
-  ./drush pm-update drupal --pm-force
+  drush archive-dump --root=$SITIO --destination=$SITIO.tar.gz -v --overwrite
+  drush vset --exact maintenance_mode 1
+  drush cache-clear all
+  drush pm-update drupal --pm-force
   read -p "¿El sitio es funcional? [Y/N]: " resp
   case $resp in
-    y|Y)./drush vset --exact maintenance_mode 0
-        ./drush cache-clear all;;
-    n|N|*)./drush archive-restore /var/www/$DOMAIN.tar.gz $DOMAIN;;
+    y|Y)drush vset --exact maintenance_mode 0
+        drush cache-clear all;;
+    n|N|*)drush archive-restore $SITIO.tar.gz $RESPALDO;;
   esac
 }
 so(){
@@ -183,7 +183,7 @@ while getopts p:d:s:aicvm opcion
     case "${opcion}" in
       p) PROYECTO=${OPTARG};;
       d) DOMAIN=${OPTARG}; DIR=`echo $DOMAIN | cut -d. -f1`;;
-      s) SITIO=${OPTARG};;
+      s) SITIO=${OPTARG}; $RESPALDO=`echo $SITE | rev | cut -d/ -f1 | rev`;;
       a) actualiza;;
       i) install_dep;existencia;;
       c) creacion_proyecto;;
