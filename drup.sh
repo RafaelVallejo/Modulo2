@@ -190,7 +190,7 @@ while getopts p:d:s:aicvm opcion
       i) OPCION='I';;
       c) OPCION='C';;
       v) OPCION='V';;
-      m) OPCION='V';;
+      m) OPCION='M';;
     esac
 done
 
