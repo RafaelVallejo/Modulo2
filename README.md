@@ -202,4 +202,42 @@ vh(){
 }
 ```
 
+Ya para invocar las funciones, se hace uso de optargs, la cual te ayuda a seleccionar una bandera al momento de ejecutar el script.
+
+```bash
+while getopts p:d:s:aicvm opcion
+  do
+    case "${opcion}" in
+      p) PROYECTO=${OPTARG};;
+      d) DOMAIN=${OPTARG}; DIR=`echo $DOMAIN | cut -d. -f1`;;
+      s) SITIO=${OPTARG}; $RESPALDO=`echo $SITE | rev | cut -d/ -f1 | rev`;;
+      a) OPCION='A';;
+      i) OPCION='I';;
+      c) OPCION='C';;
+      v) OPCION='V';;
+      m) OPCION='M';;
+    esac
+done
+```
+
+Cuenta con varias verificaciones, para que el script se deba ejecutar con sudo, para que los valores no esten vacios o para que las banderas sean correctas.
+ 
+
 ### Manual de Usuario
+
+El script debe ejecutarse con permisos de superusuario.
+
+1. Creación de proyecto (Drupal 7,59): 
+```bash
+sudo ./script.sh -i -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -c
+```
+
+2. VirtualHost: 
+```bash
+sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -v -m
+```
+
+3. Para actualizar el sitio, que es la funcionalidad de este proyecto: 
+```bash
+sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -a
+``` 
