@@ -197,33 +197,31 @@ while getopts p:d:s:aicvm opcion
 done
 
 
-if [-z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ]  
+if [ -z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ]
 	then
 		echo "Faltan argumentos!"
-		exit 
-	
-fi 
+		exit
 
-if [ ! -e "$SITIO" ]
-	then 
-		echo "El directorio no existe"
-		exit 
 fi
 
-
-if [ OPCION == 'A']
-	then 
+if [ $OPCION = 'A' ]
+	then
+    if [ ! -e "$SITIO" ]
+    	then
+    		echo "El directorio no existe"
+    		exit
+    fi
 	actualiza
-elif [ OPCION == 'I']
+elif [ $OPCION = 'I' ]
 	then
 		install_dep;existencia
-elif [ OPCION == 'C']
+elif [ $OPCION = 'C' ]
 	then
 		creacion_proyecto
-elif [ OPCION == 'V']
+elif [ $OPCION = 'V' ]
 	then
 		vh
-elif [ OPCION == 'M']
+elif [ $OPCION = 'M' ]
 	then
 		virtual_host
-fi 
+fi
