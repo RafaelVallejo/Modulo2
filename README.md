@@ -241,3 +241,7 @@ sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -v -m
 ```bash
 sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -a
 ``` 
+
+#### Referencias:
+* https://www.drupal.org/docs/develop/using-composer/using-composer-to-install-drupal-and-manage-dependencies
+* https://www.drupal.org/docs/develop/using-composer
