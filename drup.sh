@@ -187,7 +187,7 @@ while getopts p:d:s:aicvm opcion
     case "${opcion}" in
       p) PROYECTO=${OPTARG};;
       d) DOMAIN=${OPTARG}; DIR=`echo $DOMAIN | cut -d. -f1`;;
-      s) SITIO=${OPTARG}; $RESPALDO=`echo $SITIO | rev | cut -d/ -f1 | rev`;;
+      s) SITIO=${OPTARG}; RESPALDO=`echo $SITIO | rev | cut -d/ -f1 | rev`;;
       a) OPCION='A';;
       i) OPCION='I';;
       c) OPCION='C';;
