@@ -13,7 +13,7 @@ install_dep(){
     then
       apt install ca-certificates apt-transport-https -y
       wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add -
-      echo "deb https://packages.sury.org/php/ strech main" | tee /etc/apt/sources.list.d/php.list
+      echo "deb https://packages.sury.org/php/ stretch main" | tee /etc/apt/sources.list.d/php.list
       apt update
       apt install postgresql php7.2 php7.2-common php7.2-curl php7.2-gd php7.2-json php7.2-mbstring php7.2-pgsql php7.2-xml unzip -y
   elif [ $FLAG = 'D8' ]
