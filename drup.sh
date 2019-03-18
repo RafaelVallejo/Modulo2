@@ -1,11 +1,10 @@
 # Ejecución:
-# 1) Creación de proyecto (Drupal 7,59): sudo ./script.sh -i -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -c
+# 0) Instalación de dependencias y verificación de git, composer, drush: sudo ./script.sh -i
+# 1) Creación de proyecto (Drupal 7.59) e instalación de dependencias: sudo ./script.sh -i -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -c
 # 2) VirtualHost en centOS y Debian (falta probar Debian 9): sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -v -m
 #   2.1) Si se quieren agregar más VirtualHost, quitar la opción -v
 ## Meter en i) [linea 188] la función: modulos  para que los instale pero tarda más, eso al final
-# Para lo que pide en el proyecto realmente, es la función actualiza (tenemos que checar lo de respaldos de los sitios y que reciba la ruta completa o nombre):
 # Se ejecutaría así: sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -a
-### Falta también configurar en el entorno lo de https, secure headers y htaccess
 
 
 #Requisitos
@@ -29,13 +28,13 @@ install_dep(){
   fi
 }
 
-# Verifica existencia de git, composer
+# Verifica existencia de git, composer, drush
 existencia(){
   if [ $(which git) ]
   then
       echo $(git version)
   else
-      if [ $FLAG = 'C']
+      if [ $FLAG = 'C' ]
       then
         yum install git -y
       else
@@ -55,6 +54,14 @@ existencia(){
          mv composer.phar /usr/bin/composer
   fi
 
+  if [ $(which drush) ]
+    then
+        echo $(drush version)
+    else
+        # Instalación de drush
+        composer global require consolidation/cgr
+        PATH="$(composer config -g home)/vendor/bin:$PATH"
+  fi
 }
 
 # Se crea proyecto con Drupal 7.59
@@ -70,7 +77,6 @@ creacion_proyecto(){
   cd $PROYECTO
   composer install
   cd ..
-  composer global require drush/drush
 }
 
 # Se configura y hablita VirtualHost  args: web.prueba web
@@ -96,7 +102,7 @@ virtual_host(){
       CustomLog /var/www/$DOMAIN/requests.log combined
   #      SSLEngine On
     </VirtualHost>" |  tee $SISTEMA
-     ln -s /$PROYECTO/web /var/www/$DOMAIN
+    ln -s /$PROYECTO/web /var/www/$DOMAIN
 
     if [ $FLAG = 'D9' ] || [ $FLAG = 'D8' ]
     then
@@ -143,19 +149,33 @@ vh(){
   fi
 }
 
+# Función para restaurar sitios
+restaura(){
+  PATH="$(composer config -g home)/vendor/bin:$PATH"
+  unlink /var/www/$RESPALDO
+  rm -Rf /$PROYECTO/web
+  drush archive-restore $SITIO.tar.gz $RESPALDO --destination=/$PROYECTO/web
+  ln -s /$PROYECTO/web /var/www/$DOMAIN
+  chmod 444 /$PROYECTO/web/sites/default/settings.php
+
+}
 actualiza(){
+  PATH="$(composer config -g home)/vendor/bin:$PATH"
   drush archive-dump --root=$SITIO --destination=$SITIO.tar.gz -v --overwrite
+  cd /$PROYECTO
   drush vset --exact maintenance_mode 1
   drush cache-clear all
   drush pm-update drupal --pm-force
+  drush vset --exact maintenance_mode 0
   read -p "¿El sitio es funcional? [Y/N]: " resp
   case $resp in
-    y|Y)drush vset --exact maintenance_mode 0
-        drush cache-clear all;;
-    n|N|*)unlink /var/www/$RESPALDO
-          drush archive-restore $SITIO.tar.gz $RESPALDO --destination=/$PROYECTO/web
-          ln -s /$PROYECTO/web /var/www/$DOMAIN;;
+    y|Y)drush cache-clear all
+        echo "Se actualizó el sitio y la versión de Drupal a 7.64";;
+    n|N|*)restaura
+          echo "Se restauro el sitio con Drupal 7.59";;
   esac
+  chmod 444 /$PROYECTO/web/sites/default/settings.php
+  cd -
 }
 so(){
   FLAG=0
@@ -168,7 +188,6 @@ so(){
   else
     FLAG='C'
   fi
-  echo $FLAG
 }
 
 
@@ -180,9 +199,10 @@ fi
 cd /
 so
 
+
 OPCION='X'
 
-while getopts p:d:s:aicvm opcion
+while getopts p:d:s:aicvmr opcion
   do
     case "${opcion}" in
       p) PROYECTO=${OPTARG};;
@@ -193,11 +213,12 @@ while getopts p:d:s:aicvm opcion
       c) OPCION='C';;
       v) OPCION='V';;
       m) OPCION='M';;
+      r) OPCION='R';;
     esac
 done
 
 
-if [ -z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ]
+if [ -z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ] && [ $OPCION != 'I' ]
 	then
 		echo "Faltan argumentos!"
 		exit
@@ -224,4 +245,13 @@ elif [ $OPCION = 'V' ]
 elif [ $OPCION = 'M' ]
 	then
 		virtual_host
+elif [ $OPCION = 'R' ]
+	then
+    if [ ! -e "$SITIO.tar.gz" ]
+      then
+        echo "El respaldo no existe."
+        exit
+    fi
+		restaura
+    echo "El sitio $SITIO ha sido restaurado con la última copia que se creó."
 fi
