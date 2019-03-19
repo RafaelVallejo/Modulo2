@@ -60,7 +60,8 @@ existencia(){
     else
         # Instalación de drush
         composer global require consolidation/cgr
-        PATH="$(composer config -g home)/vendor/bin:$PATH"
+       # PATH="$(composer config -g home)/vendor/bin:$PATH"
+       PATH="/$PROYECTO/vendor/bin:$PATH"
   fi
 }
 
@@ -151,7 +152,8 @@ vh(){
 
 # Función para restaurar sitios
 restaura(){
-  PATH="$(composer config -g home)/vendor/bin:$PATH"
+  #PATH="$(composer config -g home)/vendor/bin:$PATH"
+  PATH="/$PROYECTO/vendor/bin:$PATH"
   unlink /var/www/$RESPALDO
   rm -Rf /$PROYECTO/web
   drush archive-restore $SITIO.tar.gz $RESPALDO --destination=/$PROYECTO/web
@@ -160,7 +162,8 @@ restaura(){
 
 }
 actualiza(){
-  PATH="$(composer config -g home)/vendor/bin:$PATH"
+  #PATH="$(composer config -g home)/vendor/bin:$PATH"
+  PATH="/$PROYECTO/vendor/bin:$PATH"
   drush archive-dump --root=$SITIO --destination=$SITIO.tar.gz -v --overwrite
   cd /$PROYECTO
   drush vset --exact maintenance_mode 1
