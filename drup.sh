@@ -15,14 +15,14 @@ install_dep(){
       wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add -
       echo "deb https://packages.sury.org/php/ stretch main" | tee /etc/apt/sources.list.d/php.list
       apt update
-      apt install postgresql php7.2 php7.2-common php7.2-curl php7.2-gd php7.2-json php7.2-mbstring php7.2-pgsql php7.2-xml unzip -y
+      apt install postgresql php7.1 php7.1-common php7.1-curl php7.1-gd php7.1-json php7.1-mbstring php7.1-pgsql php7.1-xml unzip -y
   elif [ $FLAG = 'D8' ]
     then
       apt install ca-certificates apt-transport-https -y
       wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add -
       echo "deb https://packages.sury.org/php/ jessie main" | tee /etc/apt/sources.list.d/php.list
       apt update
-      apt install postgresql php7.2 php7.2-common php7.2-curl php7.2-gd php7.2-json php7.2-mbstring php7.2-pgsql php7.2-xml unzip -y
+      apt install postgresql php7.1 php7.1-common php7.1-curl php7.1-gd php7.1-json php7.1-mbstring php7.1-pgsql php7.1-xml unzip -y
   else
     yum install wget httpd postgresql postgresql-server php php-curl php-gd php-pdo.x86_64 php-pgsql.x86_64 php-xml php-mbstring.x86_64 unzip -y
   fi
