@@ -84,25 +84,37 @@ creacion_proyecto(){
 virtual_host(){
   if [ $FLAG = 'C' ]
     then
+      yum install mod_ssl openssl
       SISTEMA=/etc/httpd/sites-available/$DOMAIN.conf
   else
       SISTEMA=/etc/apache2/sites-available/$DOMAIN.conf
   fi
 
-  echo "
-    <VirtualHost *:80>
-      ServerName www.$DOMAIN
-  #      Redirect / https://www.web.prueba
-  #    </VirtualHost>
+  openssl genrsa -out ca.key 2048
+  openssl req -new -key ca.key -out ca.csr
+  openssl x509 -req -days 365 -in ca.csr -signkey ca.key -out ca.crt
 
-  #    <VirtualHost _default_:443>
-  #      ServerName www.web.prueba
-      ServerAlias $DOMAIN
-      DocumentRoot /var/www/$DOMAIN
-      ErrorLog /var/www/$DOMAIN/error.log
-      CustomLog /var/www/$DOMAIN/requests.log combined
-  #      SSLEngine On
-    </VirtualHost>" |  tee $SISTEMA
+  mv ca.crt /root/
+  mv ca.key /root/
+  mv ca.csr /root/
+
+  echo "
+  <VirtualHost *:80>
+    ServerName www.$DOMAIN
+    Redirect / https://www.$DOMAIN
+    ServerAlias $DOMAIN
+  </VirtualHost>
+
+  <VirtualHost _default_:443>
+    ServerName www.$DOMAIN
+    ServerAlias $DOMAIN
+    DocumentRoot /var/www/$DOMAIN
+    #ErrorLog /var/www/$DOMAIN/error.log
+    #CustomLog /var/www/$DOMAIN/requests.log combined
+    SSLEngine On
+    SSLCertificateFile /root/ca.crt
+    SSLCertificateKeyFile /root/ca.key
+  </VirtualHost>" |  tee $SISTEMA
     ln -s /$PROYECTO/web /var/www/$DOMAIN
 
     if [ $FLAG = 'D9' ] || [ $FLAG = 'D8' ]
@@ -110,6 +122,8 @@ virtual_host(){
       sed -i 's#/var/www/html#/var/www#' /etc/apache2/apache2.conf
       cd /etc/apache2/sites-available/
       a2ensite $DOMAIN.conf
+      a2enmod rewrite
+      a2enmod ssl
       cd -
       service apache2 restart
     else
