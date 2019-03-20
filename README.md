@@ -24,7 +24,6 @@ so(){
   else
     FLAG='C'
   fi
-  echo $FLAG
 }
 ```
 
@@ -36,16 +35,16 @@ install_dep(){
     then
       apt install ca-certificates apt-transport-https -y
       wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add -
-      echo "deb https://packages.sury.org/php/ jessie main" | tee /etc/apt/sources.list.d/php.list
+      echo "deb https://packages.sury.org/php/ stretch main" | tee /etc/apt/sources.list.d/php.list
       apt update
-      apt install postgresql php7.2 php7.2-common php7.2-curl php7.2-gd php7.2-json php7.2-mbstring php7.2-pgsql php7.2-xml unzip -y
+      apt install postgresql php7.1 php7.1-common php7.1-curl php7.1-gd php7.1-json php7.1-mbstring php7.1-pgsql php7.1-xml unzip -y
   elif [ $FLAG = 'D8' ]
     then
       apt install ca-certificates apt-transport-https -y
       wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add -
       echo "deb https://packages.sury.org/php/ jessie main" | tee /etc/apt/sources.list.d/php.list
       apt update
-      apt install postgresql php7.2 php7.2-common php7.2-curl php7.2-gd php7.2-json php7.2-mbstring php7.2-pgsql php7.2-xml unzip -y
+      apt install postgresql php7.1 php7.1-common php7.1-curl php7.1-gd php7.1-json php7.1-mbstring php7.1-pgsql php7.1-xml unzip -y
   else
     yum install wget httpd postgresql postgresql-server php php-curl php-gd php-pdo.x86_64 php-pgsql.x86_64 php-xml php-mbstring.x86_64 unzip -y
   fi
@@ -60,7 +59,7 @@ existencia(){
   then
       echo $(git version)
   else
-      if [ $FLAG = 'C']
+      if [ $FLAG = 'C' ]
       then
         yum install git -y
       else
@@ -78,6 +77,16 @@ existencia(){
          php composer-setup.php
          rm composer-setup.php
          mv composer.phar /usr/bin/composer
+  fi
+
+  if [ $(which drush) ]
+    then
+        echo $(drush version)
+    else
+        # Instalación de drush
+        composer global require consolidation/cgr
+       # PATH="$(composer config -g home)/vendor/bin:$PATH"
+       PATH="/$PROYECTO/vendor/bin:$PATH"
   fi
 }
 ```
@@ -98,7 +107,6 @@ creacion_proyecto(){
   cd $PROYECTO
   composer install
   cd ..
-  composer global require drush/drush
 }
 ```
 
@@ -130,18 +138,23 @@ El sitio se actualiza con la siguiente función.
 
 ```bash
 actualiza(){
+  #PATH="$(composer config -g home)/vendor/bin:$PATH"
+  PATH="/$PROYECTO/vendor/bin:$PATH"
   drush archive-dump --root=$SITIO --destination=$SITIO.tar.gz -v --overwrite
+  cd /$PROYECTO
   drush vset --exact maintenance_mode 1
   drush cache-clear all
   drush pm-update drupal --pm-force
+  drush vset --exact maintenance_mode 0
   read -p "¿El sitio es funcional? [Y/N]: " resp
   case $resp in
-    y|Y)drush vset --exact maintenance_mode 0
-        drush cache-clear all;;
-    n|N|*)unlink /var/www/$RESPALDO
-          drush archive-restore $SITIO.tar.gz $RESPALDO --destination=/$PROYECTO/web
-          ln -s /$PROYECTO/web /var/www/$DOMAIN;;
+    y|Y)drush cache-clear all
+        echo "Se actualizó el sitio y la versión de Drupal a 7.64";;
+    n|N|*)restaura
+          echo "Se restauro el sitio con Drupal 7.59";;
   esac
+  chmod 444 /$PROYECTO/web/sites/default/settings.php
+  cd -
 }
 ```
 
@@ -151,35 +164,49 @@ Donde primero se hace el respaldo del mismo, posteriormente se actualiza y se pr
 Para el caso de los entornos virtuales, se hicieron 2 funciones, la primera llamada virtual_host, la cual configura un virtual host para redireccionar a https, en caso de querer entrar al sitio por http.
 
 ```bash
-virtual_host(){
+virtual_hovirtual_host(){
   if [ $FLAG = 'C' ]
     then
+      yum install mod_ssl openssl
       SISTEMA=/etc/httpd/sites-available/$DOMAIN.conf
   else
       SISTEMA=/etc/apache2/sites-available/$DOMAIN.conf
   fi
 
-  echo "
-    <VirtualHost *:80>
-      ServerName www.$DOMAIN
-  #      Redirect / https://www.web.prueba
-  #    </VirtualHost>
+  openssl genrsa -out ca.key 2048
+  openssl req -new -key ca.key -out ca.csr
+  openssl x509 -req -days 365 -in ca.csr -signkey ca.key -out ca.crt
 
-  #    <VirtualHost _default_:443>
-  #      ServerName www.web.prueba
-      ServerAlias $DOMAIN
-      DocumentRoot /var/www/$DOMAIN
-      ErrorLog /var/www/$DOMAIN/error.log
-      CustomLog /var/www/$DOMAIN/requests.log combined
-  #      SSLEngine On
-    </VirtualHost>" |  tee $SISTEMA
-     ln -s /$PROYECTO/web /var/www/$DOMAIN
+  mv ca.crt /root/
+  mv ca.key /root/
+  mv ca.csr /root/
+
+  echo "
+  <VirtualHost *:80>
+    ServerName www.$DOMAIN
+    Redirect / https://www.$DOMAIN
+    ServerAlias $DOMAIN
+  </VirtualHost>
+
+  <VirtualHost _default_:443>
+    ServerName www.$DOMAIN
+    ServerAlias $DOMAIN
+    DocumentRoot /var/www/$DOMAIN
+    #ErrorLog /var/www/$DOMAIN/error.log
+    #CustomLog /var/www/$DOMAIN/requests.log combined
+    SSLEngine On
+    SSLCertificateFile /root/ca.crt
+    SSLCertificateKeyFile /root/ca.key
+  </VirtualHost>" |  tee $SISTEMA
+    ln -s /$PROYECTO/web /var/www/$DOMAIN
 
     if [ $FLAG = 'D9' ] || [ $FLAG = 'D8' ]
     then
       sed -i 's#/var/www/html#/var/www#' /etc/apache2/apache2.conf
       cd /etc/apache2/sites-available/
       a2ensite $DOMAIN.conf
+      a2enmod rewrite
+      a2enmod ssl
       cd -
       service apache2 restart
     else
@@ -187,6 +214,7 @@ virtual_host(){
       setenforce 0
       service httpd restart
     fi
+
 }
 ```
 
@@ -202,46 +230,100 @@ vh(){
 }
 ```
 
+Cuando se actualiza el sitio se pregunta si es funcional, en caso de dar una respuesta positiva y luego querer restaurar el sitio, existe una función para eso.
+
+```bash
+restaura(){
+  #PATH="$(composer config -g home)/vendor/bin:$PATH"
+  PATH="/$PROYECTO/vendor/bin:$PATH"
+  unlink /var/www/$RESPALDO
+  rm -Rf /$PROYECTO/web
+  drush archive-restore $SITIO.tar.gz $RESPALDO --destination=/$PROYECTO/web
+  ln -s /$PROYECTO/web /var/www/$DOMAIN
+  chmod 444 /$PROYECTO/web/sites/default/settings.php
+
+}
+```
+
+Primero se verifica que el script haya sido ejecutado como root, ya que necesitamos permisos para instalar las dependencias.
+```bash
+if [ $(id -u) -ne 0 ]
+  then
+    echo "Ejecuta as root"
+    exit
+fi
+cd /
+so
+```
+
 Ya para invocar las funciones, se hace uso de optargs, la cual te ayuda a seleccionar una bandera al momento de ejecutar el script.
 
 ```bash
-while getopts p:d:s:aicvm opcion
+while getopts p:d:s:aicvmr opcion
   do
     case "${opcion}" in
       p) PROYECTO=${OPTARG};;
       d) DOMAIN=${OPTARG}; DIR=`echo $DOMAIN | cut -d. -f1`;;
-      s) SITIO=${OPTARG}; $RESPALDO=`echo $SITE | rev | cut -d/ -f1 | rev`;;
+      s) SITIO=${OPTARG}; RESPALDO=`echo $SITIO | rev | cut -d/ -f1 | rev`;;
       a) OPCION='A';;
       i) OPCION='I';;
       c) OPCION='C';;
       v) OPCION='V';;
       m) OPCION='M';;
+      r) OPCION='R';;
     esac
 done
 ```
 
-Cuenta con varias verificaciones, para que el script se deba ejecutar con sudo, para que los valores no esten vacios o para que las banderas sean correctas.
- 
+Se verifica que los argumentos no se encuentren vacios.
+```bash
+if [ -z "$PROYECTO" ] && [ -z "$DOMAIN" ] && [ -z "$SITIO" ] && [ $OPCION != 'I' ]
+	then
+		echo "Faltan argumentos!"
+		exit
+
+fi
+```
+
+Y por último se hacen las validaciones y aplicaciones de funciones de acuerdo a las banderas que fueron ingresadas, como la a para actualizar, la r para restaurar, la m para crear virtual host y la c para crear el sitio.
+
 
 ### Manual de Usuario
 
 El script debe ejecutarse con permisos de superusuario.
 
-1. Creación de proyecto (Drupal 7,59): 
+1. Instalación de dependencias:
 ```bash
-sudo ./script.sh -i -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -c
+sudo ./script.sh -i
 ```
 
-2. VirtualHost: 
+2. Creación de proyecto e instalación de módulos(Drupal 7,59): 
 ```bash
-sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -v -m
+sudo ./script.sh -s /var/www/NOMBRE_SITIO -d NOMBRE_DOMINIO -p NOMBRE_PROYECTO -c
 ```
 
-3. Para actualizar el sitio, que es la funcionalidad de este proyecto: 
+3. Creación de un VirtualHost con redireccion a https: 
 ```bash
-sudo ./script.sh -p NOMBRE_PROY -d NOMBRE_DOM -s NOMBRE_SITIO -a
+sudo ./script.sh -s /var/www/NOMBRE_SITIO -d NOMBRE_DOMINIO -p NOMBRE_PROYECTO -m
+```
+
+4. Para actualizar el sitio, que es la funcionalidad de este proyecto: 
+```bash
+sudo ./script.sh -s /var/www/NOMBRE_SITIO -d NOMBRE_DOMINIO -p NOMBRE_PROYECTO -a
 ``` 
+
+5. En caso de querer restaurar el sitio:
+```bash
+sudo ./script.sh -s /var/www/NOMBRE_SITIO -d NOMBRE_DOMINIO -p NOMBRE_PROYECTO -r
+```
 
 #### Referencias:
 * https://www.drupal.org/docs/develop/using-composer/using-composer-to-install-drupal-and-manage-dependencies
 * https://www.drupal.org/docs/develop/using-composer
+* https://www.tecmint.com/redirect-http-to-https-on-apache/
+* https://www.tecmint.com/apache-security-tips/
+* https://www.guru99.com/postgresql-create-database.html
+* https://geekflare.com/http-header-implementation/
+* https://geekflare.com/apache-web-server-hardening-security/
+* https://www.linux-party.com/4-apache/9201-como-configurar-https-en-apache-web-server-con-centos
+* https://github.com/consolidation/cgr#installation-and-usage

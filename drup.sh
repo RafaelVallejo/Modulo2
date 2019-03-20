@@ -255,7 +255,7 @@ elif [ $OPCION = 'I' ]
 		install_dep;existencia
 elif [ $OPCION = 'C' ]
 	then
-		creacion_proyecto
+		creacion_proyecto;modulos
 elif [ $OPCION = 'V' ]
 	then
 		vh
